@@ -80,10 +80,10 @@ func (ip *ImagePool) process(ctx context.Context, input Image) error {
 	defer buf.Close()
 	err = ip.imgprocessor(ctx, input.Img, buf)
 	if err != nil {
-		return fmt.Errorf("image processing fail: %w", errors.Join(err, buf.Abort()))
+		return fmt.Errorf("processing fail: %w", errors.Join(err, buf.Abort()))
 	}
 	if err = buf.Commit(); err != nil {
-		return fmt.Errorf("image saving fail: %w", err)
+		return fmt.Errorf("saving fail: %w", err)
 	}
 
 	return nil
