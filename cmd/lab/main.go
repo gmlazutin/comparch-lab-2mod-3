@@ -16,6 +16,7 @@ import (
 	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool"
 	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/collectors"
 	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/processors"
+	imgutil "github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/util"
 )
 
 func main() {
@@ -79,17 +80,14 @@ func main() {
 	start := time.Now()
 
 	for _, file := range files {
-		f, err := os.Open(file)
+		var img imgpool.Image
+		err = imgutil.OpenImage(file, imgutil.DEFAULT_MAX_IMG_SIZE, &img)
 		if err != nil {
-			logger.Error("unable to open file", logging.Error(err))
+			logger.Error("unable to open image file", logging.Error(err))
 			continue
 		}
 
-		err = pool.PushContext(stopctx, imgpool.Image{
-			Name: f.Name(),
-			Img:  f,
-		})
-
+		err = pool.PushContext(stopctx, img)
 		if err != nil {
 			break
 		}
