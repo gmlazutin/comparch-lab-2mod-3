@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/gmlazutin/comparch-lab-2mod-3/internal/logging"
 	"github.com/gmlazutin/comparch-lab-2mod-3/internal/util"
@@ -23,6 +24,7 @@ func main() {
 	output_dir := flag.String("output", "./output", "destination directory")
 	workers_cnt := flag.Int("workers", 4, "workers count, must be in (0, 500]")
 	algo := flag.String("algo", "invert", "needed action, only \"invert\" action is currently supported")
+	timing := flag.Bool("duration", false, "assess the execution duration")
 	flag.Parse()
 
 	logger := logging.InitLogger(slog.Level(*log_lvl))
@@ -74,6 +76,8 @@ func main() {
 		)
 	})
 
+	start := time.Now()
+
 	for _, file := range files {
 		f, err := os.Open(file)
 		if err != nil {
@@ -96,6 +100,11 @@ func main() {
 		logger.Info("stopping processing...")
 		return
 	}
+
+	if *timing {
+		logger.Info("total pool execution time", slog.Duration("time", time.Since(start)))
+	}
+
 	logger.Info("writing output...")
 
 	collection.Range(func(key, value any) bool {
