@@ -110,7 +110,7 @@ func main() {
 			logger.Info("stopping saving...")
 			return false
 		}
-		if err := os.WriteFile(filepath.Join(*output_dir, filepath.Base(key.(string))), value.([]byte), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(*output_dir, filepath.Base(key.(string))), value.([]byte), 0755); err != nil {
 			logger.Error("unable to save output file", logging.Error(err))
 		}
 		return true
