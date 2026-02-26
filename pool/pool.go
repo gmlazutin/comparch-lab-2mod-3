@@ -2,23 +2,17 @@ package pool
 
 import (
 	"context"
-	"errors"
 	"sync"
-	"sync/atomic"
-)
-
-var (
-	ErrPoolIsClosing = errors.New("pool is in closing state")
 )
 
 type ProcessRoutine[T any] func(context.Context, int, T)
 
 type Pool[T any] struct {
-	tasks   chan T
-	ctx     context.Context
-	cancel  context.CancelFunc
-	closing atomic.Bool
-	wg      sync.WaitGroup
+	tasks  chan T
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+	once   sync.Once
 }
 
 func NewPool[T any](workers int, routine ProcessRoutine[T]) *Pool[T] {
@@ -33,13 +27,8 @@ func NewPool[T any](workers int, routine ProcessRoutine[T]) *Pool[T] {
 		go func() {
 			defer ip.wg.Done()
 
-			for {
-				select {
-				case task := <-ip.tasks:
-					routine(ip.ctx, i, task)
-				case <-ip.ctx.Done():
-					return
-				}
+			for task := range ip.tasks {
+				routine(ip.ctx, i, task)
 			}
 		}()
 	}
@@ -47,20 +36,19 @@ func NewPool[T any](workers int, routine ProcessRoutine[T]) *Pool[T] {
 	return ip
 }
 
-func (ip *Pool[T]) Push(task T) error {
-	if !ip.closing.Load() {
-		ip.tasks <- task
+func (ip *Pool[T]) PushContext(ctx context.Context, task T) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case ip.tasks <- task:
 		return nil
 	}
-
-	return ErrPoolIsClosing
 }
 
 func (ip *Pool[T]) Stop() {
-	if !ip.closing.CompareAndSwap(false, true) {
-		return
-	}
-	close(ip.tasks)
-	ip.cancel()
-	ip.wg.Wait()
+	ip.once.Do(func() {
+		ip.cancel()
+		close(ip.tasks)
+		ip.wg.Wait()
+	})
 }
