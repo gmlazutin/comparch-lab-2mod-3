@@ -2,71 +2,57 @@ package pool
 
 import (
 	"context"
-	"errors"
 	"sync"
-)
-
-var (
-	ErrStopped = errors.New("pool was stopped")
 )
 
 type ProcessRoutine[T any] func(context.Context, int, T)
 
 type QPool[T any] struct {
-	tasks   chan T
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	mtx     sync.Mutex
-	stopped bool
+	tasks  chan T
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+	once   sync.Once
 }
 
 func NewQPool[T any](workers int, routine ProcessRoutine[T]) *QPool[T] {
-	p := &QPool[T]{
+	ip := &QPool[T]{
 		tasks: make(chan T, workers),
 	}
 
-	p.ctx, p.cancel = context.WithCancel(context.Background())
-	p.wg.Add(workers)
-
+	ip.wg.Add(workers)
+	ip.ctx, ip.cancel = context.WithCancel(context.Background())
 	for i := 0; i < workers; i++ {
 		i := i
 		go func() {
-			defer p.wg.Done()
-			for task := range p.tasks {
-				routine(p.ctx, i, task)
+			defer ip.wg.Done()
+
+			for task := range ip.tasks {
+				routine(ip.ctx, i, task)
 			}
 		}()
 	}
 
-	return p
+	return ip
 }
 
-func (p *QPool[T]) Push(task T) error {
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-
-	if p.stopped {
-		return ErrStopped
-	}
-
+func (ip *QPool[T]) PushContext(ctx context.Context, task T) error {
 	select {
-	case <-p.ctx.Done():
-		return ErrStopped
-	case p.tasks <- task:
+	case <-ctx.Done():
+		return ctx.Err()
+	case ip.tasks <- task:
 		return nil
 	}
 }
 
-func (p *QPool[T]) Stop() {
-	p.cancel()
+func (ip *QPool[T]) Push(task T) error {
+	return ip.PushContext(context.Background(), task)
+}
 
-	p.mtx.Lock()
-	if !p.stopped {
-		p.stopped = true
-		close(p.tasks)
-	}
-	p.mtx.Unlock()
-
-	p.wg.Wait()
+func (ip *QPool[T]) Stop() {
+	ip.once.Do(func() {
+		ip.cancel()
+		close(ip.tasks)
+		ip.wg.Wait()
+	})
 }
