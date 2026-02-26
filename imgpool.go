@@ -42,12 +42,12 @@ type ImagePool struct {
 	errcollector ImageErrorCollector
 }
 
-func NewImagePool(workers int, processor ImageProcessor, collector ImageCollector) *ImagePool {
+func NewImagePool(ctx context.Context, workers int, processor ImageProcessor, collector ImageCollector) *ImagePool {
 	ip := &ImagePool{
 		imgprocessor: processor,
 		imgcollector: collector,
 	}
-	ip.qpool = pool.NewQPool(workers, func(ctx context.Context, thread int, input Image) {
+	ip.qpool = pool.NewQPool(ctx, workers, func(ctx context.Context, thread int, input Image) {
 		ctx = context.WithValue(ctx, imgPoolThreadId, thread)
 		err := ip.process(ctx, input)
 		if err != nil && ip.errcollector != nil {
@@ -88,6 +88,6 @@ func (ip *ImagePool) PushContext(ctx context.Context, img Image) error {
 	return ip.qpool.PushContext(ctx, img)
 }
 
-func (ip *ImagePool) Wait() {
-	ip.qpool.Wait()
+func (ip *ImagePool) WaitDone() {
+	ip.qpool.WaitDone()
 }

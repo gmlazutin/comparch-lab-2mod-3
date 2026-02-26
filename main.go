@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 
 	"github.com/gmlazutin/comparch-lab-2mod-3/logging"
@@ -24,26 +25,35 @@ func main() {
 
 	if _, err := os.Stat(*imgs_dir); os.IsNotExist(err) {
 		logger.Error("input directory does not exist", slog.String("dest", *imgs_dir))
-		os.Exit(1)
+		return
 	}
 
 	if err := os.MkdirAll(*output_dir, 0755); err != nil {
 		logger.Error("failed to create output directory", slog.String("dest", *output_dir), logging.Error(err))
-		os.Exit(1)
+		return
 	}
 
 	if 0 >= *workers_cnt || *workers_cnt > 500 {
 		logger.Error("invalid workers count value", slog.Int("value", *workers_cnt))
-		os.Exit(1)
+		return
 	}
 
 	if *algo != "invert" {
 		logger.Error("unsupported action", slog.String("algo", *algo))
-		os.Exit(1)
+		return
 	}
 
+	files, err := util.ListFilesWithExts(*imgs_dir, []string{".jpg", ".jpeg", ".png"})
+	if err != nil {
+		logger.Error("unable to get input directory listing", logging.Error(err))
+		return
+	}
+
+	stopctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	collection := &sync.Map{}
-	pool := NewImagePool(*workers_cnt, InvertImage, MemoryImgCollector(collection)).
+	pool := NewImagePool(stopctx, *workers_cnt, InvertImage, MemoryImgCollector(collection)).
 		WithErrorCollector(func(ctx context.Context, i Image, err error) {
 			logger.Error(
 				"image pool error has occurred",
@@ -52,16 +62,6 @@ func main() {
 				logging.Error(err),
 			)
 		})
-	defer pool.Wait()
-
-	files, err := util.ListFilesWithExts(*imgs_dir, []string{"jpg", "jpeg", "png"})
-	if err != nil {
-		logger.Error("unable to get input directory listing", logging.Error(err))
-		os.Exit(1)
-	}
-
-	stopctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	for _, file := range files {
 		f, err := os.Open(file)
@@ -76,7 +76,22 @@ func main() {
 		})
 
 		if stopctx.Err() != nil {
-			break
+			logger.Info("stopping")
+			pool.WaitDone()
+			return
 		}
 	}
+
+	pool.WaitDone()
+	logger.Info("writing output...")
+
+	collection.Range(func(key, value any) bool {
+		if stopctx.Err() != nil {
+			return false
+		}
+		if err := os.WriteFile(filepath.Join(*output_dir, filepath.Base(key.(string))), value.([]byte), 0600); err != nil {
+			logger.Error("unable to save output file", logging.Error(err))
+		}
+		return true
+	})
 }

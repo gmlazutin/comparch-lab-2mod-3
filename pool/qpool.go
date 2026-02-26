@@ -8,32 +8,23 @@ import (
 type ProcessRoutine[T any] func(context.Context, int, T)
 
 type QPool[T any] struct {
-	tasks  chan T
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-	once   sync.Once
+	tasks chan T
+	wg    sync.WaitGroup
 }
 
-func NewQPool[T any](workers int, routine ProcessRoutine[T]) *QPool[T] {
+func NewQPool[T any](ctx context.Context, workers int, routine ProcessRoutine[T]) *QPool[T] {
 	ip := &QPool[T]{
 		tasks: make(chan T, workers),
 	}
 
 	ip.wg.Add(workers)
-	ip.ctx, ip.cancel = context.WithCancel(context.Background())
 	for i := 0; i < workers; i++ {
 		i := i
 		go func() {
 			defer ip.wg.Done()
 
-			for {
-				select {
-				case task := <-ip.tasks:
-					routine(ip.ctx, i, task)
-				case <-ip.ctx.Done():
-					return
-				}
+			for task := range ip.tasks {
+				routine(ctx, i, task)
 			}
 		}()
 	}
@@ -54,8 +45,7 @@ func (ip *QPool[T]) Push(task T) error {
 	return ip.PushContext(context.Background(), task)
 }
 
-func (ip *QPool[T]) Wait() {
-	ip.cancel()
-	ip.wg.Wait()
+func (ip *QPool[T]) WaitDone() {
 	close(ip.tasks)
+	ip.wg.Wait()
 }
