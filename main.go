@@ -53,15 +53,19 @@ func main() {
 	defer stop()
 
 	collection := &sync.Map{}
-	pool := NewImagePool(stopctx, *workers_cnt, InvertImage, MemoryImgCollector(collection)).
-		WithErrorCollector(func(ctx context.Context, i Image, err error) {
-			logger.Error(
-				"image pool error has occurred",
-				slog.Int("thread", ExtractImagePoolThreadId(ctx)),
-				slog.String("element", i.Name),
-				logging.Error(err),
-			)
-		})
+	pool := NewImagePool(
+		stopctx,
+		*workers_cnt,
+		InvertImageProcessor(ImgProcessorOptions{
+			Logger: logger,
+		}),
+		MemoryImgCollector(collection),
+	).WithErrorCollector(func(ctx context.Context, i Image, err error) {
+		logger.Error(
+			"image pool error has occurred",
+			append(MakeDebugLoggerAttrs(ctx), logging.Error(err))...,
+		)
+	})
 
 	for _, file := range files {
 		f, err := os.Open(file)
@@ -75,18 +79,21 @@ func main() {
 			Img:  f,
 		})
 
-		if stopctx.Err() != nil {
-			logger.Info("stopping")
-			pool.WaitDone()
-			return
+		if err != nil {
+			break
 		}
 	}
 
-	pool.WaitDone()
+	err = pool.WaitDone()
+	if err != nil {
+		logger.Info("stopping processing...")
+		return
+	}
 	logger.Info("writing output...")
 
 	collection.Range(func(key, value any) bool {
 		if stopctx.Err() != nil {
+			logger.Info("stopping saving...")
 			return false
 		}
 		if err := os.WriteFile(filepath.Join(*output_dir, filepath.Base(key.(string))), value.([]byte), 0600); err != nil {

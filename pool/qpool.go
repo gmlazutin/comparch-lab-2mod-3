@@ -10,11 +10,13 @@ type ProcessRoutine[T any] func(context.Context, int, T)
 type QPool[T any] struct {
 	tasks chan T
 	wg    sync.WaitGroup
+	ctx   context.Context
 }
 
 func NewQPool[T any](ctx context.Context, workers int, routine ProcessRoutine[T]) *QPool[T] {
 	ip := &QPool[T]{
 		tasks: make(chan T, workers),
+		ctx:   ctx,
 	}
 
 	ip.wg.Add(workers)
@@ -24,6 +26,9 @@ func NewQPool[T any](ctx context.Context, workers int, routine ProcessRoutine[T]
 			defer ip.wg.Done()
 
 			for task := range ip.tasks {
+				if ctx.Err() != nil {
+					break
+				}
 				routine(ctx, i, task)
 			}
 		}()
@@ -45,7 +50,9 @@ func (ip *QPool[T]) Push(task T) error {
 	return ip.PushContext(context.Background(), task)
 }
 
-func (ip *QPool[T]) WaitDone() {
+func (ip *QPool[T]) WaitDone() error {
 	close(ip.tasks)
 	ip.wg.Wait()
+
+	return ip.ctx.Err()
 }

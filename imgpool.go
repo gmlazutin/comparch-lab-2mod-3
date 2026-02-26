@@ -13,27 +13,33 @@ type imgPoolCtxKey int
 
 const (
 	imgPoolThreadId imgPoolCtxKey = 1
+	imgPoolName     imgPoolCtxKey = 2
 )
 
 func ExtractImagePoolThreadId(ctx context.Context) int {
 	return ctx.Value(imgPoolThreadId).(int)
 }
 
+func ExtractImagePoolName(ctx context.Context) string {
+	return ctx.Value(imgPoolName).(string)
+}
+
 type Image struct {
 	Name string
-	Img  io.Reader
+	Img  io.ReadCloser
 }
 
 type ImageErrorCollector func(context.Context, Image, error)
 
 type ImageWriter interface {
 	io.WriteCloser
+
 	Commit() error
 	Abort() error
 }
 
 type ImageProcessor func(context.Context, io.Reader, io.Writer) error
-type ImageCollector func(context.Context, Image) (ImageWriter, error)
+type ImageCollector func(context.Context, string) (ImageWriter, error)
 
 type ImagePool struct {
 	qpool        *pool.QPool[Image]
@@ -49,6 +55,7 @@ func NewImagePool(ctx context.Context, workers int, processor ImageProcessor, co
 	}
 	ip.qpool = pool.NewQPool(ctx, workers, func(ctx context.Context, thread int, input Image) {
 		ctx = context.WithValue(ctx, imgPoolThreadId, thread)
+		ctx = context.WithValue(ctx, imgPoolName, input.Name)
 		err := ip.process(ctx, input)
 		if err != nil && ip.errcollector != nil {
 			ip.errcollector(ctx, input, fmt.Errorf("imagepool: %w", err))
@@ -64,7 +71,9 @@ func (ip *ImagePool) WithErrorCollector(collector ImageErrorCollector) *ImagePoo
 }
 
 func (ip *ImagePool) process(ctx context.Context, input Image) error {
-	buf, err := ip.imgcollector(ctx, input)
+	defer input.Img.Close()
+
+	buf, err := ip.imgcollector(ctx, input.Name)
 	if err != nil {
 		return fmt.Errorf("error during initializing collector: %w", err)
 	}
@@ -88,6 +97,6 @@ func (ip *ImagePool) PushContext(ctx context.Context, img Image) error {
 	return ip.qpool.PushContext(ctx, img)
 }
 
-func (ip *ImagePool) WaitDone() {
-	ip.qpool.WaitDone()
+func (ip *ImagePool) WaitDone() error {
+	return ip.qpool.WaitDone()
 }

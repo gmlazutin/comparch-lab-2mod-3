@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"io"
 	"log/slog"
 	"os"
 )
@@ -11,6 +12,10 @@ func InitLogger(level slog.Level) *slog.Logger {
 	})
 	logger := slog.New(handler)
 	return logger
+}
+
+func EmptyLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func Error(err error) slog.Attr {
