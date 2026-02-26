@@ -7,7 +7,7 @@ import (
 
 type ProcessRoutine[T any] func(context.Context, int, T)
 
-type Pool[T any] struct {
+type QPool[T any] struct {
 	tasks  chan T
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -15,8 +15,8 @@ type Pool[T any] struct {
 	once   sync.Once
 }
 
-func NewPool[T any](workers int, routine ProcessRoutine[T]) *Pool[T] {
-	ip := &Pool[T]{
+func NewQPool[T any](workers int, routine ProcessRoutine[T]) *QPool[T] {
+	ip := &QPool[T]{
 		tasks: make(chan T, workers),
 	}
 
@@ -36,7 +36,7 @@ func NewPool[T any](workers int, routine ProcessRoutine[T]) *Pool[T] {
 	return ip
 }
 
-func (ip *Pool[T]) PushContext(ctx context.Context, task T) error {
+func (ip *QPool[T]) PushContext(ctx context.Context, task T) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -45,11 +45,11 @@ func (ip *Pool[T]) PushContext(ctx context.Context, task T) error {
 	}
 }
 
-func (ip *Pool[T]) Push(task T) error {
+func (ip *QPool[T]) Push(task T) error {
 	return ip.PushContext(context.Background(), task)
 }
 
-func (ip *Pool[T]) Stop() {
+func (ip *QPool[T]) Stop() {
 	ip.once.Do(func() {
 		ip.cancel()
 		close(ip.tasks)
