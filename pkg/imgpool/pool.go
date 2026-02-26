@@ -1,4 +1,4 @@
-package main
+package imgpool
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gmlazutin/comparch-lab-2mod-3/pool"
+	"github.com/gmlazutin/comparch-lab-2mod-3/internal/pool"
 )
 
 type imgPoolCtxKey int

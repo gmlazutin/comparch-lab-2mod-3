@@ -1,9 +1,11 @@
-package main
+package collectors
 
 import (
 	"bytes"
 	"context"
 	"sync"
+
+	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool"
 )
 
 // implements: ImageWriter
@@ -31,8 +33,8 @@ func (d *MemoryImgCollectorWriter) Abort() error {
 	return nil
 }
 
-func MemoryImgCollector(collection *sync.Map) ImageCollector {
-	return func(ctx context.Context, name string) (ImageWriter, error) {
+func MemoryImgCollector(collection *sync.Map) imgpool.ImageCollector {
+	return func(ctx context.Context, name string) (imgpool.ImageWriter, error) {
 		m := &MemoryImgCollectorWriter{
 			buf:        &bytes.Buffer{},
 			collection: collection,

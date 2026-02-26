@@ -1,39 +1,21 @@
-package main
+package processors
 
 import (
 	"context"
 	"image"
 	"image/color"
-	"image/jpeg"
-	"image/png"
 	"io"
 	"log/slog"
 
-	"github.com/gmlazutin/comparch-lab-2mod-3/logging"
+	"github.com/gmlazutin/comparch-lab-2mod-3/internal/logging"
+	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool"
 )
 
-type ImgProcessorOptions struct {
-	Logger *slog.Logger
-}
-
-func encodeImage(format string, input *image.RGBA, output io.Writer) error {
-	switch format {
-	case "png":
-		return png.Encode(output, input)
-	case "jpeg":
-		return jpeg.Encode(output, input, &jpeg.Options{
-			Quality: 90,
-		})
-	default:
-		panic("invertImage: unknown format: " + format)
-	}
-}
-
-func InvertImageProcessor(options ImgProcessorOptions) ImageProcessor {
+func InvertImageProcessor(options imgpool.ImageProcessorOptions) imgpool.ImageProcessor {
 	return func(ctx context.Context, input io.Reader, output io.Writer) error {
 		var logger *slog.Logger
 		if options.Logger != nil {
-			logger = options.Logger.With(MakeDebugLoggerAttrs(ctx)...)
+			logger = options.Logger.With(imgpool.MakeDebugLoggerAttrs(ctx)...)
 		} else {
 			logger = logging.EmptyLogger()
 		}
@@ -68,6 +50,6 @@ func InvertImageProcessor(options ImgProcessorOptions) ImageProcessor {
 
 		logger.Debug("inverting done, trying to encode...")
 
-		return encodeImage(format, inverted, output)
+		return EncodeImage(format, options, inverted, output)
 	}
 }

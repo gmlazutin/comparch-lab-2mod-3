@@ -3,14 +3,18 @@ package main
 import (
 	"context"
 	"flag"
+	"image/jpeg"
 	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"sync"
 
-	"github.com/gmlazutin/comparch-lab-2mod-3/logging"
-	"github.com/gmlazutin/comparch-lab-2mod-3/util"
+	"github.com/gmlazutin/comparch-lab-2mod-3/internal/logging"
+	"github.com/gmlazutin/comparch-lab-2mod-3/internal/util"
+	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool"
+	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/collectors"
+	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/processors"
 )
 
 func main() {
@@ -53,17 +57,20 @@ func main() {
 	defer stop()
 
 	collection := &sync.Map{}
-	pool := NewImagePool(
+	pool := imgpool.NewImagePool(
 		stopctx,
 		*workers_cnt,
-		InvertImageProcessor(ImgProcessorOptions{
+		processors.InvertImageProcessor(imgpool.ImageProcessorOptions{
 			Logger: logger,
+			JpegOptions: &jpeg.Options{
+				Quality: 70,
+			},
 		}),
-		MemoryImgCollector(collection),
-	).WithErrorCollector(func(ctx context.Context, i Image, err error) {
+		collectors.MemoryImgCollector(collection),
+	).WithErrorCollector(func(ctx context.Context, i imgpool.Image, err error) {
 		logger.Error(
 			"image pool error has occurred",
-			append(MakeDebugLoggerAttrs(ctx), logging.Error(err))...,
+			append(imgpool.MakeDebugLoggerAttrs(ctx), logging.Error(err))...,
 		)
 	})
 
@@ -74,7 +81,7 @@ func main() {
 			continue
 		}
 
-		err = pool.PushContext(stopctx, Image{
+		err = pool.PushContext(stopctx, imgpool.Image{
 			Name: f.Name(),
 			Img:  f,
 		})
