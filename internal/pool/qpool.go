@@ -50,7 +50,7 @@ func (ip *QPool[T]) Push(task T) error {
 	return ip.PushContext(context.Background(), task)
 }
 
-func (ip *QPool[T]) WaitDone() error {
+func (ip *QPool[T]) Close() error {
 	close(ip.tasks)
 	ip.wg.Wait()
 

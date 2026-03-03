@@ -97,7 +97,7 @@ func main() {
 		}
 	}
 
-	err = pool.WaitDone()
+	err = pool.Close()
 	if err != nil {
 		logger.Info("stopping processing...")
 		return

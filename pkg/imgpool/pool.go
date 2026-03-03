@@ -86,6 +86,6 @@ func (ip *ImagePool) PushContext(ctx context.Context, img Image) error {
 	return ip.qpool.PushContext(ctx, img)
 }
 
-func (ip *ImagePool) WaitDone() error {
-	return ip.qpool.WaitDone()
+func (ip *ImagePool) Close() error {
+	return ip.qpool.Close()
 }
