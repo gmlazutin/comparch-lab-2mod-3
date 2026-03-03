@@ -43,9 +43,9 @@ func InvertImageProcessor(options imgpool.ImageProcessorOptions) imgpool.ImagePr
 					uint8(255 - b/256),
 					uint8(a / 256),
 				})
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
+			}
+			if ctx.Err() != nil {
+				return ctx.Err()
 			}
 		}
 
