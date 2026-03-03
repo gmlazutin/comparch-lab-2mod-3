@@ -65,7 +65,7 @@ func NewImagePool(ctx context.Context, workers int, processor ImageProcessor, co
 	return ip
 }
 
-func (ip *ImagePool) WithErrorCollector(collector ImageErrorCollector) *ImagePool {
+func (ip *ImagePool) SetErrorCollector(collector ImageErrorCollector) *ImagePool {
 	ip.errcollector = collector
 	return ip
 }

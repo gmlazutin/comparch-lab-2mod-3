@@ -20,7 +20,7 @@ func InvertImageProcessor(options imgpool.ImageProcessorOptions) imgpool.ImagePr
 			logger = logging.EmptyLogger()
 		}
 
-		img, format, err := image.Decode(input)
+		img, format, err := options.Codec.Decode(input)
 		if err != nil {
 			return err
 		}
@@ -51,6 +51,6 @@ func InvertImageProcessor(options imgpool.ImageProcessorOptions) imgpool.ImagePr
 
 		logger.Debug("inverting done, trying to encode...")
 
-		return EncodeImage(format, options, inverted, output)
+		return options.Codec.Encode(format, inverted, output)
 	}
 }

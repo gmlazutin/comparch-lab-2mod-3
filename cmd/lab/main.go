@@ -16,6 +16,7 @@ import (
 	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool"
 	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/collectors"
 	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/processors"
+	"github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/processors/codec"
 	imgutil "github.com/gmlazutin/comparch-lab-2mod-3/pkg/imgpool/util"
 )
 
@@ -65,12 +66,16 @@ func main() {
 		*workers_cnt,
 		processors.InvertImageProcessor(imgpool.ImageProcessorOptions{
 			Logger: logger,
-			JpegOptions: &jpeg.Options{
-				Quality: 70,
-			},
+			Codec: codec.New(codec.Options{
+				Jpeg: &jpeg.Options{
+					Quality: 90,
+				},
+			}),
 		}),
-		collectors.MemoryImgCollector(collection),
-	).WithErrorCollector(func(ctx context.Context, i imgpool.Image, err error) {
+		collectors.MemoryImgCollector(imgpool.ImageCollectorOptions{
+			Logger: logger,
+		}, collection),
+	).SetErrorCollector(func(ctx context.Context, i imgpool.Image, err error) {
 		logger.Error(
 			"image pool error has occurred",
 			append(imgpool.MakeDebugLoggerAttrs(ctx), logging.Error(err))...,

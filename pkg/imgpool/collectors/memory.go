@@ -33,7 +33,7 @@ func (d *MemoryImgCollectorWriter) Abort() error {
 	return nil
 }
 
-func MemoryImgCollector(collection *sync.Map) imgpool.ImageCollector {
+func MemoryImgCollector(options imgpool.ImageCollectorOptions, collection *sync.Map) imgpool.ImageCollector {
 	return func(ctx context.Context, name string) (imgpool.ImageWriter, error) {
 		m := &MemoryImgCollectorWriter{
 			buf:        &bytes.Buffer{},
