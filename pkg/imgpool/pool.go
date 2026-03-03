@@ -30,15 +30,6 @@ type Image struct {
 
 type ImageErrorCollector func(context.Context, Image, error)
 
-type ImageWriter interface {
-	io.WriteCloser
-
-	Commit() error
-}
-
-type ImageProcessor func(context.Context, io.Reader, io.Writer) error
-type ImageCollector func(context.Context, string) (ImageWriter, error)
-
 type ImagePool struct {
 	qpool        *pool.QPool[Image]
 	imgprocessor ImageProcessor
