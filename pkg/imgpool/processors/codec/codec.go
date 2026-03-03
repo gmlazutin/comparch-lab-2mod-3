@@ -1,6 +1,7 @@
 package codec
 
 import (
+	"context"
 	"errors"
 	"image"
 	"image/jpeg"
@@ -60,4 +61,12 @@ func (c codec) Decode(input io.Reader) (image.Image, string, error) {
 	}
 
 	return img, format, nil
+}
+
+func (c codec) EncodeContext(ctx context.Context, format string, input image.Image, output io.Writer) error {
+	return c.Encode(format, input, output)
+}
+
+func (c codec) DecodeContext(ctx context.Context, input io.Reader) (image.Image, string, error) {
+	return c.Decode(input)
 }
