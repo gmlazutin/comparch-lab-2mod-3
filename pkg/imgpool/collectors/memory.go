@@ -29,10 +29,6 @@ func (d *MemoryImgCollectorWriter) Commit() error {
 	return nil
 }
 
-func (d *MemoryImgCollectorWriter) Abort() error {
-	return nil
-}
-
 func MemoryImgCollector(options imgpool.ImageCollectorOptions, collection *sync.Map) imgpool.ImageCollector {
 	return func(ctx context.Context, name string) (imgpool.ImageWriter, error) {
 		m := &MemoryImgCollectorWriter{

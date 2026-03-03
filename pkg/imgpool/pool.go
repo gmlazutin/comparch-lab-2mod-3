@@ -2,7 +2,6 @@ package imgpool
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -35,7 +34,6 @@ type ImageWriter interface {
 	io.WriteCloser
 
 	Commit() error
-	Abort() error
 }
 
 type ImageProcessor func(context.Context, io.Reader, io.Writer) error
@@ -80,7 +78,7 @@ func (ip *ImagePool) process(ctx context.Context, input Image) error {
 	defer buf.Close()
 	err = ip.imgprocessor(ctx, input.Img, buf)
 	if err != nil {
-		return fmt.Errorf("processing fail: %w", errors.Join(err, buf.Abort()))
+		return fmt.Errorf("processing fail: %w", err)
 	}
 	if err = buf.Commit(); err != nil {
 		return fmt.Errorf("saving fail: %w", err)
